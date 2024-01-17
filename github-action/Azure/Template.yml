@@ -4,7 +4,7 @@ on: #These determines what triggers your pipeline
   push:
     branches: [master ,main] # when you push/commit a code on what branch should trigger the pipeline
     tags: ['v*.*.*'] # This a wildcard for tags in that format.
-    
+
   pull_request: 
     branches: [master ,main] # PR triggered towards these branches will trigger this pipeline
   workflow_dispatch: # This allow manually trigerring a pipeline.
@@ -58,10 +58,11 @@ jobs:
         docker build . -t <registry url>/${{ env.PROJECT_IMAGE_NAME }}:${{ github.sha}}
         docker push <registry url>/${{ env.PROJECT_IMAGE_NAME }}:${{ github.sha}}
 
-
+  # Conditions can be put in place to restrict what happen
   deploy-project:
     name: "Continous-Deployment"
     runs-on: ubuntu-latest
+    if: ${{ (github.event.inputs.environment == 'main') && (github.event_name == 'push') }} #condition, only deploy if there is a successful push to the main branch
     defaults:
       run:
         working-directory: ./
