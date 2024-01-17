@@ -1,0 +1,88 @@
+name: "CI-CD PIPELINE TEMPLATE" # Name your pipeline as you see fit.
+
+on: #These determines what triggers your pipeline
+  push:
+    branches: [master ,main] # when you push/commit a code on what branch should trigger the pipeline
+    tags: ['v*.*.*'] # This a wildcard for tags in that format.
+    
+  pull_request: 
+    branches: [master ,main] # PR triggered towards these branches will trigger this pipeline
+  workflow_dispatch: # This allow manually trigerring a pipeline.
+
+env: # These are environment variable available only on this configuration. Helps managing repeating code.
+  PROJECT_IMAGE_NAME: ""
+
+# concurrency helps you manage pipeline run
+# for each ref (branch/pr) run just the most recent,
+# cancel other pending/running ones
+concurrency:
+  group: "${{ github.workflow }}-${{ github.head_ref }}"
+  cancel-in-progress: true
+
+jobs:
+  build_project:
+    name: Continous-Integration # Name as you see fit
+    runs-on: ubuntu-latest # choose what machine to run your build on
+    timeout-minutes: 20 # set your time out
+    steps:
+      
+    - name: Checkout code # These copies a copy of your repository into the runner(in this case ubuntu machine)
+      uses: actions/checkout@v3
+
+    - name: Lint Code Base 
+      uses: github/super-linter@v4
+      env: # set super linter as you see fit
+        VALIDATE_ALL_CODEBASE: true
+        DEFAULT_BRANCH: "main" # set your default branch
+        GITHUB_TOKEN: ${{ secrets.<> }}  # use github secrets for sensitive data
+
+    - name: SonarQube Scan #Scanning your project if you have a sonarqube project
+      uses: sonarsource/sonarqube-scan-action@master
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        SONAR_ROOT_CERT: ${{ secrets.SONAR_ROOT_CERT }}
+
+    #- name: Code Coverage 
+    # This can be configured depending on what your test outputs or if you have unit tests in your project.
+
+    - name: Log into registry
+      uses: docker/login-action@v1
+      with:
+        registry: ${{ secrets.<ENDPOINT> }}
+        username: ${{ secrets.<USERNAME> }}
+        password: ${{ secrets.<PASSWORD> }}
+
+    - name: Build & Push
+      run: |
+        docker build . -t <registry url>/${{ env.PROJECT_IMAGE_NAME }}:${{ github.sha}}
+        docker push <registry url>/${{ env.PROJECT_IMAGE_NAME }}:${{ github.sha}}
+
+
+  deploy-project:
+    name: "Continous-Deployment"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./
+    steps:
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: '{"clientId":"${{ secrets.<> }}","clientSecret":"${{ secrets.<> }}","subscriptionId":"${{ secrets.<> }}","tenantId":"${{ secrets.<> }}"}'
+        
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Pulling Artifacts
+      run: |
+        docker pull <registry url>/${{ env.PROJECT_IMAGE_NAME }}:${{ github.sha }}
+      # Tagging the images using git tag is a neat way of deploying. 
+      # especially for production environment
+      
+
+    - name: deploy to webapp
+      uses: azure/webapps-deploy@v2 #This can be any azure service. webapp is juast an example
+      with:
+        app-name: '<PROJECT NAME ON AZURE>'
+        images: '<registry url>/${{ env.PROJECT_IMAGE_NAME }}:${{ github.sha}}' 
