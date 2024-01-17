@@ -10,6 +10,4 @@ Tools/concepts to be used for these demostration include:
 - Docker (Containerization of the project)
 - Super Linter (Linting commits for common errors)
 - Azure App service (Azure Deployment)
-- Snow (Scanning and monitoring)
 
-The highlight of the CI-CD includes:
