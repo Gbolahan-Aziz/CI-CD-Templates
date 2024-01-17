@@ -3,7 +3,7 @@ The following are recommendations to have in mind when using github action for y
         Break down your CI/CD process into smaller
         reusable actions to promote reusability and maintainability.
 
-- Use Secrets for Sensitive Data:
+- ## Use Secrets for Sensitive Data:
         Store sensitive data like API keys or passwords in GitHub Secrets and reference them in your workflows to keep them secure.
 
 - ## Optimize for Efficiency: 
