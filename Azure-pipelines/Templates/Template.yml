@@ -48,7 +48,7 @@ jobs:
       docker build . -t $(registry)/$(PROJECT_IMAGE_NAME):$(Build.SourceVersion)
       docker push $(registry)/$(PROJECT_IMAGE_NAME):$(Build.SourceVersion)
     displayName: 'Build & Push'
-
+# Azure example, app service
 - job: deploy_project
   displayName: 'Continous-Deployment'
   condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
