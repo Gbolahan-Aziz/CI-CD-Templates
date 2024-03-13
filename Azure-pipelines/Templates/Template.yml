@@ -1,0 +1,79 @@
+trigger:
+- main
+- master
+- tags:
+  - v*.*.*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  PROJECT_IMAGE_NAME: ""
+
+jobs:
+- job: build_project
+  displayName: 'Continous-Integration'
+  timeoutInMinutes: 20
+  steps:
+  - checkout: self
+
+  - task: GitHubSuperLinter@4
+    displayName: 'Lint Code Base'
+    inputs:
+      VALIDATE_ALL_CODEBASE: true
+      DEFAULT_BRANCH: 'main'
+      GITHUB_TOKEN: $(githubToken)
+
+  - task: SonarQubeAnalyze@1
+    displayName: 'SonarQube Scan'
+    inputs:
+      SonarQube: 'SonarQubeConnection'
+      projectName: '<YOUR_PROJECT_NAME>'
+      projectKey: '<YOUR_PROJECT_KEY>'
+      extraProperties: |
+        sonar.coverage.exclusions=**/*.css,**/*.xml,**/*.json,**/*.md,**/node_modules/**
+        sonar.sources=.
+
+  # Add task for code coverage if needed
+
+  - task: Docker@2
+    displayName: 'Log into registry'
+    inputs:
+      command: 'login'
+      containerRegistry: '<YOUR_CONTAINER_REGISTRY>'
+      username: $(username)
+      password: $(password)
+
+  - script: |
+      docker build . -t $(registry)/$(PROJECT_IMAGE_NAME):$(Build.SourceVersion)
+      docker push $(registry)/$(PROJECT_IMAGE_NAME):$(Build.SourceVersion)
+    displayName: 'Build & Push'
+
+- job: deploy_project
+  displayName: 'Continous-Deployment'
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  dependsOn: build_project
+  steps:
+  - task: AzureCLI@2
+    displayName: 'Azure Login'
+    inputs:
+      azureSubscription: '<YOUR_AZURE_SUBSCRIPTION>'
+      scriptType: 'bash'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        az login --service-principal -u $(clientId) -p $(clientSecret) --tenant $(tenantId)
+
+  - checkout: self
+
+  - script: |
+      docker pull $(registry)/$(PROJECT_IMAGE_NAME):$(Build.SourceVersion)
+    displayName: 'Pulling Artifacts'
+
+  - task: AzureRmWebAppDeployment@4
+    displayName: 'deploy to webapp'
+    inputs:
+      ConnectionType: 'AzureRM'
+      azureSubscription: '<YOUR_AZURE_SUBSCRIPTION>'
+      appType: 'webAppContainer'
+      WebAppName: '<YOUR_WEB_APP_NAME>'
+      DockerImageName: '$(registry)/$(PROJECT_IMAGE_NAME):$(Build.SourceVersion)'
