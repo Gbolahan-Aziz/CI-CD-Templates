@@ -82,8 +82,4 @@ jobs:
       # especially for production environment
       
 
-    - name: deploy to webapp
-      uses: azure/webapps-deploy@v2 #This can be any azure service. webapp is juast an example
-      with:
-        app-name: '<PROJECT NAME ON AZURE>'
-        images: '<registry url>/${{ env.PROJECT_IMAGE_NAME }}:${{ github.sha}}' 
+   # add deployment step

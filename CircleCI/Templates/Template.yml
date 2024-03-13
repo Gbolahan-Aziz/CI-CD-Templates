@@ -1,0 +1,51 @@
+version: 2.1
+
+jobs:
+  build_project:
+    docker:
+      - image: ubuntu:latest
+    environment:
+      PROJECT_IMAGE_NAME: ""
+    steps:
+      - checkout
+      - run:
+          name: Lint Code Base
+          command: |
+            # Run linting commands here
+            echo "Linting codebase..."
+
+      - run:
+          name: SonarQube Scan
+          command: |
+            # Run SonarQube scan commands here
+            echo "Running SonarQube scan..."
+
+      # Add steps for code coverage if needed
+
+      - run:
+          name: Log into registry
+          command: |
+            # Log into Docker registry
+            echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+
+      - run:
+          name: Build & Push
+          command: |
+            # Build and push Docker image
+            docker build . -t <registry url>/${PROJECT_IMAGE_NAME}:${CIRCLE_SHA1}
+            docker push <registry url>/${PROJECT_IMAGE_NAME}:${CIRCLE_SHA1}
+
+  deploy_project:
+    docker:
+      - image: ubuntu:latest
+    environment:
+      PROJECT_IMAGE_NAME: ""
+    steps:
+      - checkout
+      - run:
+          name: Pulling Artifacts
+          command: |
+            # Pull Docker image
+            docker pull <registry url>/${PROJECT_IMAGE_NAME}:${CIRCLE_SHA1}
+
+      # Add deployment steps based on your deployment method (e.g., Azure, AWS, etc.)
